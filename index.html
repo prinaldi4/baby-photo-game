@@ -20,6 +20,8 @@
 
         <!-- Initialize Firebase -->
         <script>
+            let database; // Declare database variable globally
+        
             const firebaseConfig = {
                 apiKey: "AIzaSyCu8Tof4EZ0KuFiXaVXuT8JQEinWQLnbVY",
                 authDomain: "baby-photo-guessing-game.firebaseapp.com",
@@ -29,11 +31,11 @@
                 messagingSenderId: "674292150659",
                 appId: "1:674292150659:web:96312e9fa17e365a8186b6"
             };
-
+        
             // Initialize Firebase with error handling
             try {
                 firebase.initializeApp(firebaseConfig);
-                const database = firebase.database();
+                database = firebase.database(); // Assign to global variable
                 
                 // Test connection immediately
                 database.ref('.info/connected').on('value', function(snap) {
