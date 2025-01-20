@@ -405,6 +405,51 @@
             height: 215px;
         }
     }
+
+    .leaderboard-container {
+    background-color: white;
+    padding: 20px;
+    border-radius: 15px;
+    margin-top: 30px;
+}
+
+.leaderboard-entry {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    align-items: center;
+}
+
+.leaderboard-position {
+    font-weight: bold;
+    width: 30px;
+}
+
+.leaderboard-name {
+    flex-grow: 1;
+    text-align: left;
+    padding: 0 20px;
+}
+
+.leaderboard-score {
+    font-weight: bold;
+    color: #4CAF50;
+}
+
+.top-3 {
+    background-color: #f8f8f8;
+    font-size: 1.1em;
+}
+
+.name-input {
+    margin: 20px 0;
+}
+
+.name-input input {
+    margin-bottom: 10px;
+}
+
 </style>
 </head>
 
@@ -474,6 +519,11 @@
                 Submit All Answers
             </button>
         </div>
+    </div>
+
+    <div class="form-control leaderboard-container">
+        <h3>Leaderboard</h3>
+        <div id="leaderboard"></div>
     </div>
 
     <div class="mode-switch">
@@ -578,26 +628,27 @@
 
         // Load game data from Firebase
         async function loadGameData() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const gameId = urlParams.get('gameId');
-            
-            if (gameId) {
-                try {
-                    const snapshot = await database.ref('games/' + gameId).once('value');
-                    const savedData = snapshot.val();
-                    if (savedData) {
-                        gameData = savedData;
-                        teamMembers = gameData.teamMembers || [];
-                        updateTeamMembersList();
-                        updateCorrectAnswerSelect();
-                        showCurrentPhoto();
-                    }
-                } catch (error) {
-                    console.error('Error loading game data:', error);
-                    alert('Error loading game data: ' + error.message);
-                }
+    const urlParams = new URLSearchParams(window.location.search);
+    const gameId = urlParams.get('gameId');
+    
+    if (gameId) {
+        try {
+            const snapshot = await database.ref('games/' + gameId).once('value');
+            const savedData = snapshot.val();
+            if (savedData) {
+                gameData = savedData;
+                teamMembers = gameData.teamMembers || [];
+                updateTeamMembersList();
+                updateCorrectAnswerSelect();
+                showCurrentPhoto();
+                updateLeaderboard(gameId); // Add this line
             }
+        } catch (error) {
+            console.error('Error loading game data:', error);
+            alert('Error loading game data: ' + error.message);
         }
+    }
+}
 
         // Generate share link with Firebase
         async function generateShareLink() {
@@ -847,34 +898,93 @@
         }
 
         function showGameComplete(score, total) {
-            const percentage = ((score / total) * 100).toFixed(1);
-            const modal = document.getElementById('gameCompleteModal');
-            const messageDiv = document.getElementById('gameCompleteMessage');
-            
-            let feedbackMessage = '';
-            if (percentage === '100.0') {
-                feedbackMessage = 'Perfect score! Excellent job! 🎉';
-                fireConfetti();
-            } else if (percentage >= 80) {
-                feedbackMessage = 'Great job! Almost perfect! 🌟';
-                fireConfetti();
-            } else if (percentage >= 60) {
-                feedbackMessage = 'Good effort! Keep practicing! 👍';
-            } else {
-                feedbackMessage = 'Keep trying! You\'ll do better next time! 💪';
-            }
+    const percentage = ((score / total) * 100).toFixed(1);
+    const modal = document.getElementById('gameCompleteModal');
+    const messageDiv = document.getElementById('gameCompleteMessage');
+    
+    let feedbackMessage = '';
+    if (percentage === '100.0') {
+        feedbackMessage = 'Perfect score! Excellent job! 🎉';
+        fireConfetti();
+    } else if (percentage >= 80) {
+        feedbackMessage = 'Great job! Almost perfect! 🌟';
+        fireConfetti();
+    } else if (percentage >= 60) {
+        feedbackMessage = 'Good effort! Keep practicing! 👍';
+    } else {
+        feedbackMessage = 'Keep trying! You\'ll do better next time! 💪';
+    }
 
-            messageDiv.innerHTML = `
-                <div class="score-highlight">
-                    Final Score: ${score}/${total} (${percentage}%)
-                </div>
-                <div class="feedback-message">
-                    ${feedbackMessage}
-                </div>
-            `;
+    messageDiv.innerHTML = `
+        <div class="score-highlight">
+            Final Score: ${score}/${total} (${percentage}%)
+        </div>
+        <div class="name-input">
+            <input type="text" id="playerName" placeholder="Enter your name for the leaderboard">
+            <button onclick="saveScore(${score}, ${total})">Save Score</button>
+        </div>
+        <div class="feedback-message">
+            ${feedbackMessage}
+        </div>
+    `;
 
-            modal.style.display = 'flex';
-        }
+    modal.style.display = 'flex';
+}
+
+async function saveScore(score, total) {
+    const playerName = document.getElementById('playerName').value.trim();
+    if (!playerName) {
+        alert('Please enter your name');
+        return;
+    }
+
+    const gameId = new URLSearchParams(window.location.search).get('gameId');
+    if (!gameId) return;
+
+    try {
+        const scoreData = {
+            name: playerName,
+            score: score,
+            total: total,
+            percentage: (score / total * 100).toFixed(1),
+            timestamp: Date.now()
+        };
+
+        await database.ref(`leaderboards/${gameId}/scores`).push(scoreData);
+        updateLeaderboard(gameId);
+        closeModal();
+    } catch (error) {
+        console.error('Error saving score:', error);
+        alert('Error saving score. Please try again.');
+    }
+}
+
+async function updateLeaderboard(gameId) {
+    try {
+        const leaderboardDiv = document.getElementById('leaderboard');
+        const snapshot = await database.ref(`leaderboards/${gameId}/scores`)
+            .orderByChild('percentage')
+            .limitToLast(10)
+            .once('value');
+
+        const scores = [];
+        snapshot.forEach(childSnapshot => {
+            scores.push(childSnapshot.val());
+        });
+
+        scores.sort((a, b) => b.percentage - a.percentage);
+
+        leaderboardDiv.innerHTML = scores.map((score, index) => `
+            <div class="leaderboard-entry ${index < 3 ? 'top-3' : ''}">
+                <span class="leaderboard-position">#${index + 1}</span>
+                <span class="leaderboard-name">${score.name}</span>
+                <span class="leaderboard-score">${score.percentage}%</span>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error updating leaderboard:', error);
+    }
+}
 
         function fireConfetti() {
             const count = 200;
