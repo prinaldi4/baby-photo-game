@@ -450,6 +450,64 @@
     margin-bottom: 10px;
 }
 
+.leaderboard-entry.first-place {
+    background-color: #fff7e6;
+    border: 2px solid #FFD700;
+    border-radius: 8px;
+    padding: 15px 10px;
+    margin: 5px 0;
+    font-weight: bold;
+    transform: scale(1.02);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.leaderboard-entry.first-place .leaderboard-score {
+    color: #dab900;
+    font-size: 1.2em;
+}
+
+.leaderboard-position {
+    font-weight: bold;
+    width: 60px; /* Increased width to accommodate emoji */
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.top-3 {
+    background-color: #f8f8f8;
+    font-size: 1.1em;
+    padding: 12px 10px;
+    margin: 3px 0;
+    border-radius: 6px;
+    transition: transform 0.2s ease;
+}
+
+.top-3:hover {
+    transform: translateX(5px);
+}
+
+.leaderboard-container {
+    background-color: white;
+    padding: 20px;
+    border-radius: 15px;
+    margin-top: 30px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.leaderboard-entry {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.leaderboard-entry:hover {
+    background-color: #f9f9f9;
+}
+
 </style>
 </head>
 
@@ -974,9 +1032,20 @@ async function updateLeaderboard(gameId) {
 
         scores.sort((a, b) => b.percentage - a.percentage);
 
+        const getMedalEmoji = (position) => {
+            switch(position) {
+                case 0: return '🏆'; // Gold for 1st
+                case 1: return '🥈'; // Silver for 2nd
+                case 2: return '🥉'; // Bronze for 3rd
+                default: return '';
+            }
+        };
+
         leaderboardDiv.innerHTML = scores.map((score, index) => `
-            <div class="leaderboard-entry ${index < 3 ? 'top-3' : ''}">
-                <span class="leaderboard-position">#${index + 1}</span>
+            <div class="leaderboard-entry ${index < 3 ? 'top-3' : ''} ${index === 0 ? 'first-place' : ''}">
+                <span class="leaderboard-position">
+                    #${index + 1} ${getMedalEmoji(index)}
+                </span>
                 <span class="leaderboard-name">${score.name}</span>
                 <span class="leaderboard-score">${score.percentage}%</span>
             </div>
